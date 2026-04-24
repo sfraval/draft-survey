@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#1C2E5C" />
+  <meta name="description" content="LA HUNE — Draft Survey. Outil de pesée par tirants d'eau." />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="LA HUNE Draft" />
+  <link rel="manifest" href="./manifest.webmanifest" />
+  <link rel="icon" type="image/svg+xml" href="./icons/icon.svg" />
+  <link rel="apple-touch-icon" href="./icons/icon-192.png" />
+  <title>LA HUNE — Draft Survey</title>
+
+  <!-- React via CDN (évite de devoir compiler sur ta machine) -->
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  <!-- Babel standalone pour transformer le JSX à la volée -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js" crossorigin></script>
+  <!-- Tailwind CDN pour le style (suffisant pour une app interne) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <style>
+    html, body { margin: 0; padding: 0; background: #F8F5EF; overscroll-behavior-y: none; }
+    body { font-family: ui-sans-serif, system-ui, -apple-system, sans-serif; }
+    #root { min-height: 100vh; min-height: 100dvh; }
+    /* Évite le zoom iOS sur les inputs */
+    input, textarea { font-size: 16px !important; }
+    /* Splash */
+    .splash { display:flex; flex-direction:column; align-items:center; justify-content:center;
+              min-height:100vh; min-height:100dvh; background:#1C2E5C; color:white; text-align:center; }
+    .splash .brand { font-size:11px; letter-spacing:0.3em; opacity:0.7; margin-bottom:8px; }
+    .splash .title { font-size:22px; font-weight:600; letter-spacing:0.02em; }
+    .splash .hint { font-size:11px; opacity:0.6; margin-top:32px; letter-spacing:0.1em; text-transform:uppercase; }
+  </style>
+</head>
+<body>
+  <div id="root">
+    <div class="splash">
+      <div class="brand">LA&nbsp;HUNE.</div>
+      <div class="title">Draft Survey</div>
+      <div class="hint">Chargement…</div>
+    </div>
+  </div>
+
+  <!-- App React compilée depuis app.jsx par Babel au chargement -->
+  <script type="text/babel" data-presets="react" data-type="module" src="./app.jsx"></script>
+
+  <!-- Enregistrement du service worker pour l'offline -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js').catch((err) => {
+          console.warn('SW non enregistré :', err);
+        });
+      });
+    }
+  </script>
+</body>
+</html>
