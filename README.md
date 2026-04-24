@@ -1,6 +1,6 @@
 # LA HUNE — Draft Survey (PWA)
 
-Outil de pesée par tirants d'eau, synthèse des templates DUEMTM, utilisable
+Outil de pesée par tirants d'eau, utilisable
 en local ou en ligne, installable sur téléphone.
 
 ---
@@ -21,74 +21,6 @@ draft-survey-pwa/
 
 ---
 
-## 1. Utilisation en local (Mac)
-
-### Lancement
-
-1. Ouvre un Terminal
-2. Va dans le dossier `draft-survey-pwa` :
-   ```bash
-   cd ~/chemin/vers/draft-survey-pwa
-   ```
-3. Lance le serveur :
-   ```bash
-   ./serveur-local.sh
-   ```
-4. Ouvre `http://localhost:8443` dans Safari ou Chrome
-
-Pour arrêter : `Ctrl+C` dans le Terminal.
-
-### Accès depuis le téléphone (même wifi)
-
-Le script affiche aussi une adresse du type `http://192.168.x.x:8443`.
-Ouvre-la depuis le navigateur de ton téléphone, sur le même réseau wifi que
-le Mac.
-
-> ⚠️ En wifi local (IP en 192.168.x.x), la PWA fonctionne mais **le mode
-> offline est désactivé** : les navigateurs exigent HTTPS pour activer le
-> service worker en dehors de `localhost`. Pour un vrai mode offline
-> installable, utilise un des déploiements en ligne (§2 à §4).
-
-### Première utilisation
-
-L'écran de verrouillage te demande de définir un mot de passe. Il est stocké
-localement (hash SHA-256) sur le téléphone uniquement. Si tu l'oublies, le
-bouton « Réinitialiser » efface toutes les données locales et redemande un
-nouveau mot de passe.
-
----
-
-## 2. Déploiement en ligne
-
-Trois cibles possibles, détaillées dans `DEPLOIEMENT.md` :
-
-| Cible | Coût | Complexité | Mot de passe | Offline PWA |
-|---|---|---|---|---|
-| **GitHub Pages** | Gratuit | ★☆☆ | App seulement | Oui |
-| **Netlify** | Gratuit | ★☆☆ | App seulement (basic-auth = payant) | Oui |
-| **IONOS (lahune.org)** | Déjà payé | ★★☆ | **Nginx basic-auth + app** | Oui |
-
-Pour un usage stage cette semaine, je recommande GitHub Pages (tu as déjà
-un compte). Pour la version "professionnelle" de LA HUNE, la cible finale
-est `survey.lahune.org` avec double protection.
-
----
-
-## Stockage des données
-
-Toutes les données (profils navire, survey en cours, mot de passe) sont
-stockées **dans le navigateur du téléphone**, via `localStorage`. Elles
-ne quittent jamais l'appareil. Conséquences :
-
-- ✓ Pas de fuite, pas de synchro involontaire
-- ✗ Pas de synchro entre téléphone et Mac (chaque appareil a sa propre base)
-- ✗ Si tu changes de téléphone, tu repars à zéro (pas de compte cloud)
-
-Pour une synchro future, on pourra brancher l'app à ton ERP NocoBase via
-une API — mais ce n'est pas au programme de la v2.
-
----
-
 ## Limitations connues
 
 - **Babel standalone** : le JSX est compilé à la volée dans le navigateur,
@@ -105,7 +37,6 @@ une API — mais ce n'est pas au programme de la v2.
 
 ## Formules implémentées
 
-Synthèse des 4 templates étudiés (LA HUNE, Calculation, PRO, Form EVER SHIP).
 Les principales étapes :
 
 1. **Moyennes BD/TD** des 3 tirants mesurés aux marques
@@ -128,7 +59,7 @@ gîte.
 
 ## Auteur
 
-Samy Hanache — LA HUNE, Cabinet d'expertise maritime indépendant
+Samy Fraval — LA HUNE, Cabinet d'expertise maritime indépendant
 Landéda, Finistère
 Version v2 — avril 2026
 
