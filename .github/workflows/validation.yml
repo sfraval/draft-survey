@@ -50,8 +50,12 @@ jobs:
       - name: Installation de Node
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
-        # Pas de cache npm : l'outil n'a aucune dependance, c'est voulu.
+          # jsdom 30 exige Node 22.22 ou 24.15 au minimum. Cette version est
+          # verifiee par l'audit d'architecture, qui la compare au champ
+          # "engines" de package.json : une desynchronisation entre les deux a
+          # deja casse la chaine, elle ne peut plus passer inapercue.
+          node-version: '24'
+          cache: 'npm'
 
       - name: Banc de test et audit d'architecture
         id: banc
@@ -61,11 +65,14 @@ jobs:
         # l'etape et donc tout le workflow.
 
       - name: Dependances de test
-        run: npm install --no-audit --no-fund
+        run: npm ci
+        # npm ci, et non npm install : l'installation suit exactement
+        # package-lock.json, donc la version installee ne depend pas du jour.
+        # C'est la meme discipline que pour l'application elle-meme : rien
+        # d'exterieur ne doit pouvoir changer sous nos pieds.
+        #
         # jsdom uniquement, pour piloter l'interface dans un DOM. Ces paquets ne
         # sont JAMAIS deployes : l'application publiee n'a aucune dependance.
-        # L'audit d'architecture verifie d'ailleurs qu'aucun fichier livre ne
-        # charge quoi que ce soit depuis un serveur.
 
       - name: Test de bout en bout de l'interface
         run: node test-interface.js
