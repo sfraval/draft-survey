@@ -424,6 +424,61 @@ const REGLES_AUDIT = [
     }
   },
   {
+    nom: "Chaine d'integration coherente",
+    detail: "la version de Node du workflow satisfait le champ engines de package.json",
+    // La chaine a deja casse pour cette raison : le workflow demandait Node 20
+    // alors que jsdom exige Node 22 au minimum, et npm install s'est contente
+    // d'un avertissement avant de planter a l'execution. Ce controle rend la
+    // desynchronisation impossible a laisser passer.
+    verifier() {
+      const fautes = [];
+      const cheminWf = path.join(RACINE, ".github", "workflows", "validation.yml");
+      const cheminPkg = path.join(RACINE, "package.json");
+      const cheminLock = path.join(RACINE, "package-lock.json");
+
+      if (!fs.existsSync(cheminPkg)) return ["package.json absent"];
+      let pkg;
+      try { pkg = JSON.parse(fs.readFileSync(cheminPkg, "utf8")); }
+      catch (e) { return [`package.json illisible : ${e.message}`]; }
+
+      const requis = pkg.engines && pkg.engines.node;
+      if (!requis) fautes.push("package.json → champ engines.node absent : la contrainte n'est declaree nulle part");
+
+      if (!fs.existsSync(cheminLock)) {
+        fautes.push("package-lock.json absent : npm ci echouerait, et la version installee dependrait du jour");
+      } else {
+        try {
+          const lock = JSON.parse(fs.readFileSync(cheminLock, "utf8"));
+          const racine = lock.packages && lock.packages[""];
+          if (racine && racine.engines && racine.engines.node !== requis) {
+            fautes.push(`package-lock.json → engines ${racine.engines.node} ne correspond pas a package.json (${requis})`);
+          }
+        } catch (e) { fautes.push(`package-lock.json illisible : ${e.message}`); }
+      }
+
+      if (!fs.existsSync(cheminWf)) {
+        fautes.push(".github/workflows/validation.yml absent : rien ne valide plus rien automatiquement");
+        return fautes;
+      }
+      const wf = fs.readFileSync(cheminWf, "utf8");
+      const m = wf.match(/node-version:\s*['"]?(\d+)/);
+      if (!m) {
+        fautes.push("validation.yml → node-version introuvable");
+      } else if (requis) {
+        const versionWf = parseInt(m[1], 10);
+        const mini = parseInt((String(requis).match(/(\d+)/) || [])[1], 10);
+        if (isFinite(mini) && versionWf < mini) {
+          fautes.push(`validation.yml → Node ${versionWf} demande, alors que package.json exige ${requis}`);
+        }
+      }
+      // npm ci et non npm install : sinon la version installee change avec le temps
+      if (/npm install/.test(wf) && !/npm ci/.test(wf)) {
+        fautes.push("validation.yml → npm install au lieu de npm ci : la version installee dependrait du jour");
+      }
+      return fautes;
+    }
+  },
+  {
     nom: "Aucune formule de pesee dans l'interface",
     detail: "app.js saisit, affiche et exporte : aucun calcul, sinon il echappe au banc",
     verifier(fichiers) {

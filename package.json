@@ -1,5 +1,15 @@
 {
-  "dependencies": {
-    "jsdom": "^30.0.1"
+  "name": "lahune-draft-survey",
+  "version": "3.0.0",
+  "private": true,
+  "description": "Outil de pesee par tirants d'eau. L'application publiee n'a AUCUNE dependance : jsdom ne sert qu'au test d'interface et n'est jamais deploye.",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "test": "node run-node.js && node test-interface.js"
+  },
+  "devDependencies": {
+    "jsdom": "30.0.1"
   }
 }
