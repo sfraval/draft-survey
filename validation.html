@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>LA HUNE — Draft Survey : validation du moteur</title>
+<style>
+  /* ---------------------------------------------------------------------
+     Aucune police distante, aucun CSS distant, aucun script distant.
+     Piles systeme uniquement : la page doit s'ouvrir sans reseau.
+     Charte LA HUNE : marine 1C2E5C, corail E85B3A, creme F8F5EF.
+     --------------------------------------------------------------------- */
+  :root {
+    --marine: #1C2E5C;
+    --marine-clair: #33487a;
+    --corail: #E85B3A;
+    --creme: #F8F5EF;
+    --encre: #0F1A36;
+    --gris: #6B7280;
+    --trait: #DDD6C9;
+    --vert: #1F6B4A;
+    --rouge: #A8321C;
+    --sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--creme); color: var(--encre); font-family: var(--sans);
+    font-size: 15px; line-height: 1.5;
+    -webkit-text-size-adjust: 100%;
+  }
+  .page { max-width: 1080px; margin: 0 auto; padding: 0 20px 72px; }
+
+  /* --- en-tete --- */
+  header {
+    background: var(--marine); color: #fff;
+    margin: 0 -20px 0; padding: 26px 20px 22px;
+  }
+  .hdr-in { max-width: 1080px; margin: 0 auto; }
+  .marque { font-size: 11px; letter-spacing: 0.34em; opacity: 0.72; text-transform: uppercase; }
+  h1 { margin: 6px 0 2px; font-size: 25px; font-weight: 600; letter-spacing: -0.01em; }
+  .sous { font-size: 13px; opacity: 0.78; }
+
+  /* --- verdict : element signature --- */
+  .verdict {
+    margin: 0 -20px; padding: 22px 20px 24px;
+    border-bottom: 1px solid var(--trait);
+    background: #fff;
+  }
+  .verdict-in { max-width: 1080px; margin: 0 auto; display: flex; flex-wrap: wrap; gap: 22px 40px; align-items: flex-end; }
+  .verdict-etat { font-family: var(--mono); font-size: 40px; font-weight: 700; letter-spacing: -0.02em; line-height: 1; }
+  .verdict-etat.ok { color: var(--vert); }
+  .verdict-etat.ko { color: var(--rouge); }
+  .verdict-lbl { font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--gris); margin-bottom: 5px; }
+  .verdict-bloc { min-width: 128px; }
+  .verdict-val { font-family: var(--mono); font-size: 20px; font-weight: 600; }
+  .verdict-note { font-size: 12px; color: var(--gris); margin-top: 2px; }
+
+  /* --- barre d'outils --- */
+  .barre { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin: 22px 0 4px; }
+  button {
+    font-family: inherit; font-size: 12px; font-weight: 600;
+    letter-spacing: 0.1em; text-transform: uppercase;
+    padding: 9px 16px; border-radius: 4px; cursor: pointer;
+    border: 1px solid var(--marine); background: var(--marine); color: #fff;
+    transition: opacity 0.12s;
+  }
+  button.sec { background: #fff; color: var(--marine); }
+  button:hover { opacity: 0.82; }
+  button:focus-visible { outline: 2px solid var(--corail); outline-offset: 2px; }
+  .horodate { font-family: var(--mono); font-size: 12px; color: var(--gris); margin-left: auto; }
+
+  /* --- sections --- */
+  h2 {
+    font-size: 12px; letter-spacing: 0.16em; text-transform: uppercase;
+    color: var(--marine); margin: 34px 0 4px; font-weight: 700;
+    display: flex; align-items: center; gap: 12px;
+  }
+  h2::after { content: ""; flex: 1; height: 1px; background: var(--trait); }
+  .intro { font-size: 13px; color: var(--gris); margin: 0 0 12px; max-width: 74ch; }
+
+  .cas-titre { font-size: 15px; font-weight: 600; margin: 18px 0 1px; color: var(--marine); }
+  .cas-detail { font-size: 12.5px; color: var(--gris); margin-bottom: 8px; }
+
+  /* --- tableaux --- */
+  table { width: 100%; border-collapse: collapse; background: #fff; }
+  thead th {
+    font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase;
+    color: var(--gris); font-weight: 600; text-align: right;
+    padding: 8px 10px; border-bottom: 1px solid var(--trait); white-space: nowrap;
+  }
+  thead th:first-child { text-align: left; }
+  tbody td { padding: 7px 10px; border-bottom: 1px solid #F0EBE1; text-align: right; font-family: var(--mono); font-size: 13px; }
+  tbody td:first-child { text-align: left; font-family: var(--sans); font-size: 13.5px; }
+  tbody tr:last-child td { border-bottom: none; }
+  .u { color: var(--gris); font-size: 11px; }
+  .etat { font-family: var(--sans) !important; font-size: 11px !important; font-weight: 700; letter-spacing: 0.08em; white-space: nowrap; }
+  .etat.ok { color: var(--vert); }
+  .etat.ko { color: var(--rouge); }
+  tr.ko td { background: #FDF1EE; }
+
+  /* --- garde-fous --- */
+  .gardes { background: #fff; border-top: 1px solid var(--trait); }
+  .garde { display: flex; gap: 12px; align-items: baseline; padding: 8px 10px; border-bottom: 1px solid #F0EBE1; }
+  .garde:last-child { border-bottom: none; }
+  .puce { font-family: var(--mono); font-size: 11px; font-weight: 700; letter-spacing: 0.04em; flex: 0 0 30px; }
+  .puce.ok { color: var(--vert); }
+  .puce.ko { color: var(--rouge); }
+  .garde-nom { font-size: 13.5px; flex: 1 1 260px; }
+  .garde-att { font-size: 12px; color: var(--gris); flex: 2 1 300px; }
+
+  /* --- encarts --- */
+  .encart { background: #fff; border-left: 3px solid var(--marine); padding: 14px 16px; margin-top: 10px; }
+  .encart.accent { border-left-color: var(--corail); }
+  .encart p { margin: 0 0 8px; font-size: 13.5px; }
+  .encart p:last-child { margin-bottom: 0; }
+  .encart .chiffre { font-family: var(--mono); font-weight: 600; }
+  dl.paires { display: grid; grid-template-columns: 1fr auto; gap: 4px 18px; margin: 0; }
+  dl.paires dt { font-size: 13px; color: var(--gris); }
+  dl.paires dd { margin: 0; font-family: var(--mono); font-size: 13px; text-align: right; }
+
+  /* --- journal --- */
+  pre.journal {
+    background: var(--marine); color: #E8EAF2; padding: 14px 16px; margin: 10px 0 0;
+    font-family: var(--mono); font-size: 11.5px; line-height: 1.65;
+    overflow-x: auto; border-radius: 3px; white-space: pre-wrap; word-break: break-word;
+  }
+  details > summary {
+    cursor: pointer; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--marine); font-weight: 600; padding: 8px 0;
+  }
+  details > summary:focus-visible { outline: 2px solid var(--corail); outline-offset: 2px; }
+
+  footer { margin-top: 40px; font-size: 12px; color: var(--gris); border-top: 1px solid var(--trait); padding-top: 14px; }
+
+  @media (max-width: 620px) {
+    body { font-size: 14px; }
+    .verdict-etat { font-size: 32px; }
+    thead th:nth-child(2), tbody td:nth-child(2) { display: none; }
+    .horodate { margin-left: 0; width: 100%; }
+  }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="hdr-in">
+    <div class="marque">LA&nbsp;HUNE.</div>
+    <h1>Draft Survey — validation du moteur</h1>
+    <div class="sous">Moteur v3, contrôle de non-régression sur pesée réelle documentée</div>
+  </div>
+</header>
+
+<div class="verdict" id="verdict"></div>
+
+<div class="page">
+
+  <div class="barre">
+    <button id="relancer">Relancer le contrôle</button>
+    <button class="sec" id="copier">Copier le procès-verbal</button>
+    <span class="horodate" id="horodate"></span>
+  </div>
+
+  <h2>Étalon de référence</h2>
+  <p class="intro">
+    Vraquier <strong>EVER SHIP</strong>, pavillon Panama, LBP 227,00 m, bau 38,00 m,
+    port en lourd 95 349 t, déplacement lège 14 637 t. Chargement de charbon,
+    décembre 2019. Table hydrostatique du bord au pas du centimètre de 2,50 à 15,50 m,
+    soit 1 301 lignes, LCF et LCB donnés dans le système milieu, négatif vers l'avant.
+    Trois conditions chiffrées : initial navire vide, contrôle en charge, condition légère.
+  </p>
+
+  <div id="cas"></div>
+
+  <h2>Garde-fous</h2>
+  <p class="intro">
+    Ces contrôles ne vérifient pas que le moteur calcule juste, mais qu'il
+    <strong>refuse de calculer</strong> quand une donnée est douteuse. Un outil qui
+    sort un chiffre coûte que coûte est plus dangereux qu'un outil qui s'arrête.
+  </p>
+  <div class="gardes" id="gardes"></div>
+
+  <h2>Chaînage et contrôle physique</h2>
+  <div id="synthese"></div>
+
+  <h2>Mode arrondis du bord</h2>
+  <p class="intro">
+    Reproduction volontaire de la chaîne d'arrondis d'une feuille Excel classique.
+    Sert à recouper le chiffre d'un tiers en contradictoire et à démontrer qu'un
+    écart provient de ses arrondis, non d'un désaccord de méthode.
+  </p>
+  <div id="bord"></div>
+
+  <h2>Journal de calcul</h2>
+  <p class="intro">
+    Chaîne complète du cas initial, telle qu'elle doit pouvoir être recoupée à la main.
+  </p>
+  <details>
+    <summary>Afficher le journal</summary>
+    <pre class="journal" id="journal"></pre>
+  </details>
+
+  <footer id="pied"></footer>
+</div>
+
+<script src="hydro-evership.js"></script>
+<script src="engine.js"></script>
+<script src="bench.js"></script>
+<script>
+(function () {
+  "use strict";
+  var M = window.MoteurDraftSurvey, B = window.BancTestDraftSurvey;
+
+  function fr(v, d) {
+    if (typeof v !== "number" || !isFinite(v)) return "—";
+    var s = v.toFixed(d);
+    var neg = s.charAt(0) === "-";
+    if (neg) s = s.slice(1);
+    var p = s.split(".");
+    p[0] = p[0].replace(/\B(?=(\d{3})+(?!\d))/g, "\u202F");
+    return (neg ? "\u2212" : "") + p.join(",");
+  }
+  function dec(cle) {
+    if (/^(quarter|quarterMoule)$/.test(cle)) return 4;
+    if (/^(corrAv|corrMi|corrAr|assiette|lcfBrut)$/.test(cle)) return 4;
+    if (/^(tpc)$/.test(cle)) return 3;
+    if (/^(mtcP|mtcM)$/.test(cle)) return 3;
+    if (/^(corr1|corr2|corrAssiette)$/.test(cle)) return 3;
+    return 2;
+  }
+  function el(t, c, txt) {
+    var n = document.createElement(t);
+    if (c) n.className = c;
+    if (txt !== undefined) n.textContent = txt;
+    return n;
+  }
+
+  function rendre() {
+    var t0 = performance.now();
+    var out = B.lancer(M, window.HYDRO_EVERSHIP);
+    var duree = performance.now() - t0;
+    var vert = out.totalKo === 0;
+
+    // --- verdict
+    var v = document.getElementById("verdict");
+    v.innerHTML = "";
+    var vin = el("div", "verdict-in");
+    function bloc(lbl, val, cls, note) {
+      var b = el("div", "verdict-bloc");
+      b.appendChild(el("div", "verdict-lbl", lbl));
+      b.appendChild(el("div", cls || "verdict-val", val));
+      if (note) b.appendChild(el("div", "verdict-note", note));
+      return b;
+    }
+    vin.appendChild(bloc("Verdict", vert ? "CONFORME" : "ÉCART",
+      "verdict-etat " + (vert ? "ok" : "ko"),
+      vert ? "aucun écart hors tolérance" : out.totalKo + " contrôle(s) en échec"));
+    vin.appendChild(bloc("Contrôles", fr(out.totalOk, 0) + " / " + fr(out.totalOk + out.totalKo, 0), null, "points vérifiés"));
+    vin.appendChild(bloc("Écart cargaison", fr(out.chainage.ecart, 2) + " t", null,
+      "sur " + fr(out.chainage.classeur, 2) + " t chargées"));
+    vin.appendChild(bloc("Résidu physique", fr(out.physique.residu, 2) + " t", null,
+      fr(out.physique.residuPct, 5) + " % du déplacement"));
+    vin.appendChild(bloc("Durée", fr(duree, 1) + " ms", null, "hors réseau"));
+    v.appendChild(vin);
+
+    // --- cas
+    var zc = document.getElementById("cas");
+    zc.innerHTML = "";
+    out.cas.forEach(function (c) {
+      zc.appendChild(el("div", "cas-titre", "Cas " + c.nom));
+      zc.appendChild(el("div", "cas-detail", c.detail));
+      var tb = el("table");
+      tb.innerHTML = "<thead><tr><th>Grandeur</th><th>Unité</th><th>Moteur</th>" +
+        "<th>Classeur</th><th>Écart</th><th>Tolérance</th><th>État</th></tr></thead>";
+      var body = el("tbody");
+      c.lignes.forEach(function (l) {
+        var tr = el("tr", l.ok ? "" : "ko");
+        var d = dec(l.cle);
+        [l.libelle, l.unite, fr(l.moteur, d), fr(l.classeur, d),
+         fr(l.ecart, d), "± " + fr(l.tol, d)].forEach(function (x, i) {
+          var td = el("td", i === 1 ? "u" : "", x);
+          tr.appendChild(td);
+        });
+        tr.appendChild(el("td", "etat " + (l.ok ? "ok" : "ko"), l.ok ? "CONFORME" : "ÉCART"));
+        body.appendChild(tr);
+      });
+      tb.appendChild(body);
+      zc.appendChild(tb);
+    });
+
+    // --- garde-fous
+    var zg = document.getElementById("gardes");
+    zg.innerHTML = "";
+    out.gardes.forEach(function (g) {
+      var d = el("div", "garde");
+      d.appendChild(el("span", "puce " + (g.ok ? "ok" : "ko"), g.ok ? "OK" : "KO"));
+      d.appendChild(el("span", "garde-nom", g.nom));
+      d.appendChild(el("span", "garde-att", g.attendu + (g.erreur ? "  ·  " + g.erreur : "")));
+      zg.appendChild(d);
+    });
+
+    // --- synthese
+    var zs = document.getElementById("synthese");
+    zs.innerHTML = "";
+    var ch = out.chainage, ph = out.physique;
+    var e1 = el("div", "encart");
+    var dl1 = el("dl", "paires");
+    [["Sens de l'opération", ch.sens],
+     ["Déplacement net initial", fr(out.cas[0].resultat.net, 2) + " t"],
+     ["Déplacement net en charge", fr(out.cas[1].resultat.net, 2) + " t"],
+     ["Cargaison calculée par le moteur", fr(ch.moteur, 2) + " t"],
+     ["Cargaison portée au classeur", fr(ch.classeur, 2) + " t"],
+     ["Écart", fr(ch.ecart, 2) + " t"],
+     ["Connaissement", fr(ch.connaissement, 0) + " t"],
+     ["Écart au connaissement", fr(ch.ecartPct, 3) + " %"],
+     ["Incertitude de méthode à 0,3 %", "± " + fr(ch.incertitude, 0) + " t"]
+    ].forEach(function (p) {
+      dl1.appendChild(el("dt", null, p[0]));
+      dl1.appendChild(el("dd", null, String(p[1])));
+    });
+    e1.appendChild(dl1);
+    zs.appendChild(e1);
+
+    var e2 = el("div", "encart accent");
+    e2.appendChild(el("p", null,
+      "Contrôle indépendant du classeur. À la pesée initiale le navire est vide. " +
+      "Le déplacement net moins le lège doit restituer la seule constante du bord."));
+    var dl2 = el("dl", "paires");
+    [["Déplacement net moins lège", fr(ph.netMoinsLege, 2) + " t"],
+     ["Constante déclarée au bord", fr(ph.constanteDeclaree, 2) + " t"],
+     ["Résidu de cargaison", fr(ph.residu, 2) + " t"],
+     ["Résidu rapporté au déplacement", fr(ph.residuPct, 5) + " %"]
+    ].forEach(function (p) {
+      dl2.appendChild(el("dt", null, p[0]));
+      dl2.appendChild(el("dd", null, String(p[1])));
+    });
+    e2.appendChild(dl2);
+    e2.appendChild(el("p", null,
+      "Ce contrôle valide la chaîne complète, conventions de signe comprises. " +
+      "Une inversion de la convention LCF déplacerait ce résidu de 879 t."));
+    zs.appendChild(e2);
+
+    // --- mode bord
+    var zb = document.getElementById("bord");
+    zb.innerHTML = "";
+    var mb = out.modeBord;
+    var tbb = el("table");
+    tbb.innerHTML = "<thead><tr><th>Grandeur (cas initial)</th><th></th><th>Mode bord</th>" +
+      "<th>Classeur</th><th>Écart</th><th></th><th>État</th></tr></thead>";
+    var bb = el("tbody");
+    [["1re correction d'assiette", mb.corr1, mb.classeurCorr1, 1],
+     ["2e correction (Nemoto)", mb.corr2, mb.classeurCorr2, 1],
+     ["Déplacement brut", mb.dispBrut, mb.classeurDispBrut, 2],
+     ["Déplacement net", mb.net, mb.classeurNet, 2]
+    ].forEach(function (r) {
+      var ec = r[1] - r[2], ok = Math.abs(ec) < 0.005;
+      var tr = el("tr", ok ? "" : "ko");
+      [r[0], "", fr(r[1], r[3]), fr(r[2], r[3]), fr(ec, r[3]), ""].forEach(function (x) {
+        tr.appendChild(el("td", null, x));
+      });
+      tr.appendChild(el("td", "etat " + (ok ? "ok" : "ko"), ok ? "IDENTIQUE" : "ÉCART"));
+      bb.appendChild(tr);
+    });
+    tbb.appendChild(bb);
+    zb.appendChild(tbb);
+
+    // --- journal
+    document.getElementById("journal").textContent =
+      out.cas[0].resultat.journal.join("\n");
+
+    // --- horodatage et pied
+    var d = new Date();
+    var horo = d.toLocaleDateString("fr-FR") + " à " + d.toLocaleTimeString("fr-FR");
+    document.getElementById("horodate").textContent = horo;
+    document.getElementById("pied").textContent =
+      "Moteur version " + M.version + ". Contrôle exécuté le " + horo +
+      ". Aucune ressource distante n'est chargée par cette page : " +
+      "elle fonctionne hors réseau, et aucune mise à jour extérieure ne peut la modifier.";
+
+    window.__pv = out;
+    return out;
+  }
+
+  function proces(out) {
+    var L = [];
+    L.push("LA HUNE — Draft Survey : procès-verbal de validation du moteur");
+    L.push("Moteur version " + M.version);
+    L.push("Date : " + new Date().toLocaleString("fr-FR"));
+    L.push("Étalon : vraquier EVER SHIP, LBP 227,00 m, table du bord 1 301 lignes");
+    L.push("");
+    L.push("Verdict : " + (out.totalKo === 0 ? "CONFORME" : "ÉCART DÉTECTÉ"));
+    L.push("Contrôles : " + out.totalOk + " conformes, " + out.totalKo + " en échec");
+    L.push("");
+    out.cas.forEach(function (c) {
+      L.push("Cas " + c.nom);
+      c.lignes.forEach(function (l) {
+        L.push("  " + (l.ok ? "[OK]" : "[KO]") + " " + l.libelle +
+          " : moteur " + fr(l.moteur, dec(l.cle)) +
+          " / classeur " + fr(l.classeur, dec(l.cle)) +
+          " / écart " + fr(l.ecart, dec(l.cle)) + " " + l.unite);
+      });
+      L.push("");
+    });
+    L.push("Garde-fous");
+    out.gardes.forEach(function (g) {
+      L.push("  " + (g.ok ? "[OK]" : "[KO]") + " " + g.nom + " — " + g.attendu);
+    });
+    L.push("");
+    L.push("Chaînage : cargaison " + fr(out.chainage.moteur, 2) + " t, écart au classeur " +
+      fr(out.chainage.ecart, 2) + " t");
+    L.push("Contrôle physique : résidu " + fr(out.physique.residu, 2) + " t soit " +
+      fr(out.physique.residuPct, 5) + " % du déplacement");
+    return L.join("\n");
+  }
+
+  document.getElementById("relancer").addEventListener("click", function () { rendre(); });
+  document.getElementById("copier").addEventListener("click", function () {
+    var txt = proces(window.__pv || rendre());
+    var btn = this;
+    function fini(ok) {
+      btn.textContent = ok ? "Copié" : "Copie refusée";
+      setTimeout(function () { btn.textContent = "Copier le procès-verbal"; }, 1800);
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(txt).then(function () { fini(true); }, function () { fini(false); });
+    } else {
+      var ta = document.createElement("textarea");
+      ta.value = txt; document.body.appendChild(ta); ta.select();
+      var ok = false;
+      try { ok = document.execCommand("copy"); } catch (e) { ok = false; }
+      document.body.removeChild(ta); fini(ok);
+    }
+  });
+
+  rendre();
+})();
+</script>
+</body>
+</html>

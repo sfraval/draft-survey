@@ -1,68 +1,111 @@
-// Service Worker — LA HUNE Draft Survey
-// Stratégie : cache-first pour les ressources de l'app, network-fallback.
-// À incrémenter à chaque déploiement pour forcer la mise à jour.
-const CACHE_NAME = 'lahune-draft-v2-2026-04-23';
+// =============================================================================
+// LA HUNE - Draft Survey : service worker
+// =============================================================================
+// Objectif unique : que l'outil s'ouvre sur un quai, sans reseau.
+//
+// Le piege classique du cache-first, et c'est celui de la v2, est de servir
+// indefiniment une version perimee. La parade tient en trois points :
+//
+//   1. Le nom du cache porte un numero de version. Un changement de version
+//      cree un cache neuf ; l'ancien est supprime a l'activation.
+//   2. skipWaiting et clients.claim : la nouvelle version prend la main tout de
+//      suite, sans attendre la fermeture de tous les onglets.
+//   3. Pour les pages, on tente le reseau d'abord et on retombe sur le cache.
+//      Pour les fichiers de l'application, on sert le cache et on rafraichit en
+//      arriere-plan. Le calcul reste donc disponible hors reseau, sans figer
+//      indefiniment une version fausse.
+//
+// La liste ci-dessous est verifiee par l'audit d'architecture : ajouter un
+// fichier a l'application sans l'ajouter ici casserait le fonctionnement hors
+// reseau, et la chaine d'integration refuse ce cas.
+// =============================================================================
 
-// Ressources à précharger au premier lancement
-const PRECACHE = [
-  './',
-  './index.html',
-  './app.jsx',
-  './manifest.webmanifest',
-  './icons/icon.svg',
-  './icons/icon-192.png',
-  './icons/icon-512.png',
-  './icons/icon-maskable.png',
-  'https://unpkg.com/react@18/umd/react.production.min.js',
-  'https://unpkg.com/react-dom@18/umd/react-dom.production.min.js',
-  'https://unpkg.com/@babel/standalone/babel.min.js',
-  'https://cdn.tailwindcss.com',
+var VERSION = "3.0.0";
+var CACHE = "lahune-draft-survey-" + VERSION;
+
+var FICHIERS = [
+  "./",
+  "./index.html",
+  "./style.css",
+  "./engine.js",
+  "./docx.js",
+  "./app.js",
+  "./bench.js",
+  "./hydro-evership.js",
+  "./validation.html",
+  "./manifest.webmanifest",
+  "./icons/icon-192.png",
+  "./icons/icon-512.png",
+  "./icons/icon-maskable.png"
 ];
 
-self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) =>
-      // addAll est strict ; on utilise add() individuel pour tolérer les échecs CDN au premier chargement
-      Promise.all(
-        PRECACHE.map((url) =>
-          cache.add(url).catch((err) => console.warn('Cache miss', url, err))
-        )
-      )
-    )
+self.addEventListener("install", function (e) {
+  e.waitUntil(
+    caches.open(CACHE).then(function (c) {
+      // addAll echoue en bloc si un seul fichier manque, ce qui est le
+      // comportement voulu : une installation partielle donnerait un outil
+      // a moitie disponible hors reseau, sans que rien ne le signale.
+      return c.addAll(FICHIERS);
+    }).then(function () { return self.skipWaiting(); })
   );
-  self.skipWaiting();
 });
 
-self.addEventListener('activate', (event) => {
-  event.waitUntil(
-    caches.keys().then((keys) =>
-      Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k)))
-    )
+self.addEventListener("activate", function (e) {
+  e.waitUntil(
+    caches.keys().then(function (noms) {
+      return Promise.all(noms.map(function (n) {
+        if (n !== CACHE) return caches.delete(n);
+        return null;
+      }));
+    }).then(function () { return self.clients.claim(); })
   );
-  self.clients.claim();
 });
 
-self.addEventListener('fetch', (event) => {
-  const req = event.request;
-  if (req.method !== 'GET') return;
+self.addEventListener("fetch", function (e) {
+  var req = e.request;
+  if (req.method !== "GET") return;
 
-  event.respondWith(
-    caches.match(req).then((cached) => {
-      if (cached) return cached;
-      return fetch(req)
-        .then((res) => {
-          // Ne met en cache que les réponses valides
-          if (res && res.status === 200 && res.type !== 'opaque') {
-            const clone = res.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(req, clone));
-          }
-          return res;
-        })
-        .catch(() => {
-          // Hors ligne et pas en cache : on renvoie l'index pour les routes de l'app
-          if (req.mode === 'navigate') return caches.match('./index.html');
-          return new Response('Ressource non disponible hors ligne', { status: 503 });
+  var url;
+  try { url = new URL(req.url); } catch (err) { return; }
+  if (url.origin !== self.location.origin) return;
+
+  // Pages : reseau d'abord, cache en secours. Evite de rester bloque sur une
+  // ancienne version de l'interface quand le reseau est disponible.
+  if (req.mode === "navigate" || (req.headers.get("accept") || "").indexOf("text/html") >= 0) {
+    e.respondWith(
+      fetch(req).then(function (rep) {
+        var copie = rep.clone();
+        caches.open(CACHE).then(function (c) { c.put(req, copie); });
+        return rep;
+      }).catch(function () {
+        return caches.match(req).then(function (r) {
+          return r || caches.match("./index.html");
         });
+      })
+    );
+    return;
+  }
+
+  // Fichiers de l'application : cache d'abord pour la vitesse et le hors
+  // reseau, rafraichissement silencieux derriere.
+  e.respondWith(
+    caches.match(req).then(function (r) {
+      var reseau = fetch(req).then(function (rep) {
+        if (rep && rep.ok) {
+          var copie = rep.clone();
+          caches.open(CACHE).then(function (c) { c.put(req, copie); });
+        }
+        return rep;
+      }).catch(function () { return r; });
+      return r || reseau;
     })
   );
+});
+
+// Permet a l'interface de connaitre la version servie, et de forcer une mise
+// a jour immediate si besoin.
+self.addEventListener("message", function (e) {
+  if (!e.data) return;
+  if (e.data === "version" && e.source) e.source.postMessage({ version: VERSION });
+  if (e.data === "maj") self.skipWaiting();
 });
