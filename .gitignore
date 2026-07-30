@@ -1,0 +1,8 @@
+# Dependances de developpement uniquement. Rien de ce dossier n'est deploye :
+# l'application publiee n'a aucune dependance.
+node_modules/
+
+# Artefacts de test
+rapport-essai.docx
+proces-verbal-validation.txt
+rapport-validation.json
